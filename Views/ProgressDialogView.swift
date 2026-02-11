@@ -6,8 +6,12 @@ struct ProgressDialogView: View {
     @Binding var isPresented: Bool
     let onComplete: (Bool) -> Void
 
+    @Environment(\.modelContext) private var modelContext
+    @Query private var coffeeTips: [CoffeeTip]
+
     @State private var selectedStatus: CompletionStatus = .completed
     @State private var failureReason = ""
+    @State private var unlockedTip: CoffeeTip?
 
     enum CompletionStatus: String {
         case completed = "達成した"
@@ -105,24 +109,26 @@ struct ProgressDialogView: View {
                     }
 
                     // Coffee tip preview
-                    if selectedStatus == .completed {
+                    if selectedStatus == .completed && unlockedTip != nil {
                         VStack(alignment: .leading, spacing: 12) {
                             Label("豆知識を獲得しました", systemImage: "star.fill")
                                 .font(.system(size: 14, weight: .semibold, design: .default))
                                 .foregroundColor(Color(#colorLiteral(red: 0.243, green: 0.157, blue: 0.137, alpha: 1)))
 
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("コーヒーの焙煎度について")
-                                    .font(.system(size: 13, weight: .semibold, design: .default))
+                            if let tip = unlockedTip {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(tip.title)
+                                        .font(.system(size: 13, weight: .semibold, design: .default))
 
-                                Text("コーヒー豆は焙煎度によって、浅煎り（ライト）から深煎り（フレンチ）まで段階があります。浅煎りは酸味が強く、深煎りは苦味が強くなります。")
-                                    .font(.system(size: 12, weight: .regular, design: .default))
-                                    .lineLimit(3)
-                                    .foregroundColor(.secondary)
+                                    Text(tip.content)
+                                        .font(.system(size: 12, weight: .regular, design: .default))
+                                        .lineLimit(4)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(12)
+                                .background(Color(#colorLiteral(red: 1, green: 0.976, blue: 0.773, alpha: 0.3)))
+                                .cornerRadius(8)
                             }
-                            .padding(12)
-                            .background(Color(#colorLiteral(red: 1, green: 0.976, blue: 0.773, alpha: 0.3)))
-                            .cornerRadius(8)
                         }
                     }
                 }
@@ -142,6 +148,10 @@ struct ProgressDialogView: View {
                 }
 
                 Button(action: {
+                    // Unlock a random coffee tip if task is completed
+                    if selectedStatus == .completed {
+                        unlockRandomCoffeeTip()
+                    }
                     onComplete(selectedStatus == .completed || selectedStatus == .partial)
                     isPresented = false
                     impactHaptic()
@@ -176,6 +186,27 @@ struct ProgressDialogView: View {
         let impact = UIImpactFeedbackGenerator(style: .medium)
         impact.impactOccurred()
     }
+
+    private func unlockRandomCoffeeTip() {
+        // Find all locked tips
+        let lockedTips = coffeeTips.filter { !$0.isUnlocked }
+
+        // If no locked tips, all are already unlocked
+        guard !lockedTips.isEmpty else { return }
+
+        // Randomly select a locked tip
+        if let randomTip = lockedTips.randomElement() {
+            randomTip.isUnlocked = true
+            randomTip.unlockedDate = Date()
+            unlockedTip = randomTip
+
+            do {
+                try modelContext.save()
+            } catch {
+                print("Failed to unlock coffee tip: \(error)")
+            }
+        }
+    }
 }
 
 #Preview {
@@ -188,4 +219,5 @@ struct ProgressDialogView: View {
         isPresented: .constant(true),
         onComplete: { _ in }
     )
+    .modelContainer(for: CoffeeTip.self, inMemory: true)
 }

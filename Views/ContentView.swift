@@ -9,6 +9,14 @@ struct ContentView: View {
     @State private var showProgressDialog = false
     @State private var selectedTaskIndex = 0
     @State private var progress: Double = 0.65
+    @State private var selectedTab: TabType = .home
+
+    enum TabType {
+        case home
+        case tasks
+        case tips
+        case profile
+    }
 
     var currentTask: Task? {
         guard !tasks.isEmpty else { return nil }
@@ -16,6 +24,39 @@ struct ContentView: View {
     }
 
     var body: some View {
+        TabView(selection: $selectedTab) {
+            // Home Tab
+            homeView
+                .tabItem {
+                    Label("ホーム", systemImage: "cup.and.saucer.fill")
+                }
+                .tag(TabType.home)
+
+            // Tasks Tab
+            TaskListView()
+                .tabItem {
+                    Label("タスク", systemImage: "checklist")
+                }
+                .tag(TabType.tasks)
+
+            // Coffee Tips Tab
+            CoffeeTipsView()
+                .tabItem {
+                    Label("豆知識", systemImage: "book.fill")
+                }
+                .tag(TabType.tips)
+
+            // Profile Tab
+            UserProfileView()
+                .tabItem {
+                    Label("プロフィール", systemImage: "person.fill")
+                }
+                .tag(TabType.profile)
+        }
+        .accentColor(Color(#colorLiteral(red: 0.243, green: 0.157, blue: 0.137, alpha: 1)))
+    }
+
+    private var homeView: some View {
         ZStack {
             // Background with time-based color
             backgroundGradient

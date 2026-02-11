@@ -27,6 +27,9 @@ struct SoloMeetApp: App {
         WindowGroup {
             ContentView()
                 .modelContainer(modelContainer)
+                .onAppear {
+                    NotificationManager.shared.requestNotificationPermission()
+                }
         }
     }
 
@@ -72,6 +75,18 @@ struct SoloMeetApp: App {
         // Create user profile
         let userProfile = UserProfile(totalBeans: 45, isPremium: false)
         context.insert(userProfile)
+
+        // Initialize 100 coffee tips
+        CoffeeTipsDatabase.tips.forEach { tipData in
+            let tip = CoffeeTip(
+                id: tipData.id,
+                title: tipData.title,
+                content: tipData.content,
+                category: tipData.category,
+                isUnlocked: false
+            )
+            context.insert(tip)
+        }
 
         do {
             try context.save()
