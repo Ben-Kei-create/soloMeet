@@ -16,6 +16,39 @@ struct UserProfileView: View {
         return thisWeekLogs.count
     }
 
+    var completionRateThisMonth: Int {
+        let monthAgo = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
+        let thisMonthLogs = meetingLogs.filter { $0.date >= monthAgo && $0.successStatus }
+        return thisMonthLogs.count
+    }
+
+    var weeklyCompletionPercentage: Double {
+        let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        let thisWeekLogs = meetingLogs.filter { $0.date >= weekAgo }
+        let successCount = thisWeekLogs.filter { $0.successStatus }.count
+        return thisWeekLogs.isEmpty ? 0 : Double(successCount) / Double(thisWeekLogs.count)
+    }
+
+    var longestStreak: Int {
+        var longest = 0
+        var current = 0
+
+        for log in meetingLogs.reversed() {
+            if log.successStatus {
+                current += 1
+                longest = max(longest, current)
+            } else {
+                current = 0
+            }
+        }
+
+        return longest
+    }
+
+    var totalTasksCompleted: Int {
+        meetingLogs.filter { $0.successStatus }.count
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -98,17 +131,31 @@ struct UserProfileView: View {
                             )
 
                             StatRowView(
-                                title: "総完了タスク数",
-                                value: "\(userProfile?.totalTasksCompleted ?? 0) 個",
-                                icon: "list.bullet.clipboard.fill",
+                                title: "月間完了数",
+                                value: "\(completionRateThisMonth) 個",
+                                icon: "calendar.badge.clock",
                                 color: .blue
                             )
 
                             StatRowView(
-                                title: "最終ログイン",
-                                value: formattedLastLogin(userProfile?.lastLoginDate),
-                                icon: "calendar",
+                                title: "最長ストリーク",
+                                value: "\(longestStreak) 日",
+                                icon: "flame.fill",
+                                color: .orange
+                            )
+
+                            StatRowView(
+                                title: "週間達成率",
+                                value: "\(Int(weeklyCompletionPercentage * 100))%",
+                                icon: "chart.pie.fill",
                                 color: .purple
+                            )
+
+                            StatRowView(
+                                title: "総完了タスク数",
+                                value: "\(totalTasksCompleted) 個",
+                                icon: "list.bullet.clipboard.fill",
+                                color: .cyan
                             )
                         }
                         .padding(16)
