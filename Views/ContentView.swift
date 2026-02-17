@@ -5,6 +5,7 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var tasks: [Task]
     @Query private var userProfile: [UserProfile]
+    @Query private var meetingLogs: [MeetingLog]
 
     @State private var showProgressDialog = false
     @State private var selectedTaskIndex = 0
@@ -98,6 +99,25 @@ struct ContentView: View {
 
     private var topSection: some View {
         VStack(alignment: .center, spacing: 16) {
+            // 店主のメッセージエリア
+            if let profile = userProfile.first {
+                let maxStreak = tasks.map { $0.currentStreak }.max() ?? 0
+                let lastFailureReason = getLastFailureReason()
+                let shopkeeperMessage = ShopkeeperEngine.generateGreeting(
+                    streak: maxStreak,
+                    lastFailureReason: lastFailureReason
+                )
+
+                Text(shopkeeperMessage)
+                    .font(.system(size: 15, weight: .medium, design: .serif))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(4)
+                    .padding(12)
+                    .background(Color(#colorLiteral(red: 0.243, green: 0.157, blue: 0.137, alpha: 0.4)))
+                    .cornerRadius(12)
+            }
+
             if let task = currentTask {
                 VStack(spacing: 8) {
                     Text(task.goal)
@@ -121,18 +141,22 @@ struct ContentView: View {
 
     private var coffeeCupSection: some View {
         VStack {
+            // 豆の焙煎度を取得して、色を動的に変更
+            let maxStreak = tasks.map { $0.currentStreak }.max() ?? 0
+            let roastLevel = CoffeeRoast.current(streak: maxStreak)
+
             ZStack(alignment: .bottom) {
                 // Cup outline
                 CoffeeCupView(fillPercentage: progress)
                     .stroke(Color(#colorLiteral(red: 0.243, green: 0.157, blue: 0.137, alpha: 1)), lineWidth: 2)
 
-                // Coffee liquid
+                // Coffee liquid with dynamic roast color
                 CoffeeCupView(fillPercentage: progress)
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                Color(#colorLiteral(red: 0.62, green: 0.47, blue: 0.35, alpha: 1)),
-                                Color(#colorLiteral(red: 0.42, green: 0.28, blue: 0.20, alpha: 1))
+                                roastLevel.color,
+                                roastLevel.color.opacity(0.8)
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -144,11 +168,25 @@ struct ContentView: View {
                 showProgressDialog = true
                 impactHaptic()
             }
+            .transition(.scale)
 
             Text("\(Int(progress * 100))% 完了")
                 .font(.system(size: 16, weight: .semibold, design: .default))
                 .foregroundColor(Color(#colorLiteral(red: 0.243, green: 0.157, blue: 0.137, alpha: 1)))
                 .padding(.top, 12)
+
+            // 豆の状態表示
+            HStack(spacing: 6) {
+                Text(roastLevel.emoji)
+                    .font(.system(size: 18))
+                Text(roastLevel.name)
+                    .font(.system(size: 12, weight: .medium, design: .default))
+                    .foregroundColor(Color(#colorLiteral(red: 0.243, green: 0.157, blue: 0.137, alpha: 0.7)))
+                Text("(\(maxStreak)日継続)")
+                    .font(.system(size: 11, weight: .light, design: .default))
+                    .foregroundColor(.gray)
+            }
+            .padding(.top, 8)
         }
     }
 
@@ -218,6 +256,20 @@ struct ContentView: View {
     private func impactHaptic() {
         let impact = UIImpactFeedbackGenerator(style: .light)
         impact.impactOccurred()
+    }
+
+    private func getLastFailureReason() -> String? {
+        // 最新の失敗ログから失敗理由を取得（店主が前回の失敗を参照する）
+        let today = Calendar.current.startOfDay(for: Date())
+
+        // 昨日のログを取得（失敗且つ失敗理由がある場合）
+        let yesterdayLogs = meetingLogs.filter { log in
+            let logDay = Calendar.current.startOfDay(for: log.date)
+            return logDay < today && !log.successStatus && log.failureReason != nil
+        }
+
+        // 最新の失敗ログから理由を取得
+        return yesterdayLogs.sorted { $0.date > $1.date }.first?.failureReason
     }
 }
 
