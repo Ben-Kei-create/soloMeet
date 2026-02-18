@@ -141,11 +141,13 @@ struct NotificationManager {
         switch identifier {
         case "COMPLETE_ACTION":
             print("✅ ユーザーが 完了 を選択")
-            // TODO: MeetingLog に完了ログを追加
+            logTaskCompletion(fromNotification: true)
+            showFeedbackNotification(title: "お疲れ様でした！", body: "習慣を達成しましたね。☕️")
 
         case "SKIP_ACTION":
             print("⏭️ ユーザーが スキップ を選択")
-            // TODO: MeetingLog にスキップログを追加
+            logTaskSkip()
+            showFeedbackNotification(title: "スキップしました", body: "無理は禁物。また明日！")
 
         case "REMIND_LATER":
             print("🔔 5分後に再通知")
@@ -153,6 +155,99 @@ struct NotificationManager {
 
         default:
             break
+        }
+    }
+
+    // MARK: - Database Operations
+
+    /// タスク完了をログに記録
+    private func logTaskCompletion(fromNotification: Bool) {
+        guard let modelContainer = AppDelegate.modelContainer else {
+            print("❌ ModelContainer が利用不可")
+            return
+        }
+
+        let context = ModelContext(modelContainer)
+
+        do {
+            // 今日の MeetingLog を作成
+            let today = Date()
+            let meetingLog = MeetingLog(
+                date: today,
+                successStatus: true,
+                failureReason: nil,
+                notes: fromNotification ? "通知から完了" : nil
+            )
+
+            context.insert(meetingLog)
+
+            // 最初のタスクの lastCompletedDate を更新（簡易版）
+            var fetchDescriptor = FetchDescriptor<Task>()
+            fetchDescriptor.fetchLimit = 1
+            if let firstTask = try context.fetch(fetchDescriptor).first {
+                firstTask.lastCompletedDate = today
+                firstTask.currentStreak += 1
+            }
+
+            try context.save()
+
+            print("✅ MeetingLog に完了を記録しました")
+            print("   日時: \(today)")
+
+        } catch {
+            print("❌ MeetingLog の保存に失敗: \(error.localizedDescription)")
+        }
+    }
+
+    /// タスクスキップをログに記録
+    private func logTaskSkip() {
+        guard let modelContainer = AppDelegate.modelContainer else {
+            print("❌ ModelContainer が利用不可")
+            return
+        }
+
+        let context = ModelContext(modelContainer)
+
+        do {
+            // スキップのログを記録
+            let skipLog = MeetingLog(
+                date: Date(),
+                successStatus: false,
+                failureReason: "ユーザーがスキップ",
+                notes: "通知からスキップ"
+            )
+
+            context.insert(skipLog)
+            try context.save()
+
+            print("✅ スキップログを記録しました")
+
+        } catch {
+            print("❌ スキップログの保存に失敗: \(error.localizedDescription)")
+        }
+    }
+
+    /// ユーザーへのフィードバック通知を表示
+    private func showFeedbackNotification(title: String, body: String) {
+        let feedbackContent = UNMutableNotificationContent()
+        feedbackContent.title = title
+        feedbackContent.body = body
+        feedbackContent.sound = .default
+
+        // 即座に表示（1秒後）
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: "feedbackNotification",
+            content: feedbackContent,
+            trigger: trigger
+        )
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ フィードバック通知の送信失敗: \(error.localizedDescription)")
+            } else {
+                print("📢 フィードバック通知を送信しました")
+            }
         }
     }
 

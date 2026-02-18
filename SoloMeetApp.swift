@@ -19,6 +19,8 @@ struct SoloMeetApp: App {
 
         do {
             modelContainer = try ModelContainer(for: schema, configurations: [modelConfiguration])
+            // AppDelegate に ModelContainer への参照を渡す
+            AppDelegate.modelContainer = modelContainer
             // Initialize sample data on first launch
             initializeSampleData()
         } catch {

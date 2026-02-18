@@ -4,6 +4,9 @@ import SwiftData
 
 class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
+    // App全体で使う ModelContainer への参照
+    static var modelContainer: ModelContainer?
+
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -32,7 +35,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         completionHandler([.banner, .sound, .badge])
     }
 
-    /// バックグラウンドから戻ってきて、ユーザーが通知をタップした時
+    /// バックグラウンド・フォアグラウンド共通で、ユーザーが通知アクションをタップした時
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
@@ -43,12 +46,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
 
         print("📲 Notification action received:")
         print("   Action: \(actionIdentifier)")
+        print("   UserInfo: \(userInfo)")
 
-        // 通知アクションを処理
-        NotificationManager.shared.handleNotificationAction(
-            identifier: actionIdentifier,
-            userInfo: userInfo
-        )
+        // Main thread で実行（UIの更新が必要な場合に備えて）
+        DispatchQueue.main.async {
+            // 通知アクションを処理（MeetingLog への記録等）
+            NotificationManager.shared.handleNotificationAction(
+                identifier: actionIdentifier,
+                userInfo: userInfo
+            )
+        }
 
         completionHandler()
     }
