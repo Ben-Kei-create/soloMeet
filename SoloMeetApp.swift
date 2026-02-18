@@ -5,6 +5,9 @@ import SwiftData
 struct SoloMeetApp: App {
     let modelContainer: ModelContainer
 
+    // AppDelegate を登録
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     init() {
         let schema = Schema([
             Task.self,

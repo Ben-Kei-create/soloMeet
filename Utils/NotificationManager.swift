@@ -23,6 +23,9 @@ struct NotificationManager {
         // Remove all existing notifications
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
 
+        // Setup notification categories with actions
+        setupNotificationCategories()
+
         // Schedule daily morning notification at 7:00 AM
         scheduleMorningNotification()
 
@@ -30,28 +33,63 @@ struct NotificationManager {
         scheduleEveningNotification()
     }
 
+    // MARK: - Interactive Notification Setup
+
+    private func setupNotificationCategories() {
+        // 完了アクション
+        let completeAction = UNNotificationAction(
+            identifier: "COMPLETE_ACTION",
+            title: "✅ 完了",
+            options: [.foreground]
+        )
+
+        // スキップアクション
+        let skipAction = UNNotificationAction(
+            identifier: "SKIP_ACTION",
+            title: "⏭️ スキップ",
+            options: []
+        )
+
+        // 後で通知するアクション
+        let remindLaterAction = UNNotificationAction(
+            identifier: "REMIND_LATER",
+            title: "🔔 5分後に再通知",
+            options: []
+        )
+
+        // モーニングカテゴリ
+        let morningCategory = UNNotificationCategory(
+            identifier: "MORNING_CATEGORY",
+            actions: [completeAction, skipAction],
+            intentIdentifiers: [],
+            options: []
+        )
+
+        // イブニングカテゴリ
+        let eveningCategory = UNNotificationCategory(
+            identifier: "EVENING_CATEGORY",
+            actions: [completeAction, remindLaterAction],
+            intentIdentifiers: [],
+            options: []
+        )
+
+        UNUserNotificationCenter.current().setNotificationCategories([morningCategory, eveningCategory])
+    }
+
     private func scheduleMorningNotification() {
         let morningContent = UNMutableNotificationContent()
-        morningContent.title = "おはようございます☕"
-        morningContent.body = "今日も一緒に頑張ろう！まずは最初のタスクから始めましょう。"
+
+        // 店主のグリーティングメッセージを生成（簡易版：ストリークデータはサンドボックス環境では取得困難なため）
+        let shopkeeperMessage = ShopkeeperEngine.generateGreeting(streak: 7, lastFailureReason: nil)
+
+        morningContent.title = "☕ 朝のコーヒータイム"
+        morningContent.body = shopkeeperMessage
         morningContent.sound = .default
         morningContent.badge = NSNumber(value: 1)
+        morningContent.categoryIdentifier = "MORNING_CATEGORY"
 
-        // Add motivational messages based on previous day
-        let motivationalMessages = [
-            "昨日の努力は必ず報われます",
-            "完璧を目指さず、続けることが大切です",
-            "今この瞬間に集中しましょう",
-            "小さな成功の積み重ねが大きな変化を生みます",
-            "自分を信じて、今日も頑張ろう",
-            "一日一日が人生を変える力を持っています",
-            "コーヒーを飲みながら、今日のゴールを思い出そう",
-            "失敗は成功への道。進み続けることが重要です"
-        ]
-
-        if let randomMessage = motivationalMessages.randomElement() {
-            morningContent.body = randomMessage
-        }
+        // Deep link to app
+        morningContent.userInfo = ["action": "morning_greeting"]
 
         var dateComponents = DateComponents()
         dateComponents.hour = 7
@@ -69,9 +107,17 @@ struct NotificationManager {
 
     private func scheduleEveningNotification() {
         let eveningContent = UNMutableNotificationContent()
-        eveningContent.title = "今日のタスクは完了しましたか？☕"
-        eveningContent.body = "一日のまとめをして、明日に備えましょう。"
+
+        // 店主のイブニングメッセージを生成
+        let shopkeeperMessage = ShopkeeperEngine.generateGreeting(streak: 7, lastFailureReason: nil)
+
+        eveningContent.title = "☕ 夜のおさらい時間"
+        eveningContent.body = shopkeeperMessage
         eveningContent.sound = .default
+        eveningContent.categoryIdentifier = "EVENING_CATEGORY"
+
+        // Deep link to app
+        eveningContent.userInfo = ["action": "evening_review"]
 
         var dateComponents = DateComponents()
         dateComponents.hour = 18
@@ -83,6 +129,46 @@ struct NotificationManager {
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
                 print("Error scheduling evening notification: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    // MARK: - Notification Handling
+
+    func handleNotificationAction(identifier: String, userInfo: [AnyHashable: Any]) {
+        print("Notification action: \(identifier)")
+
+        switch identifier {
+        case "COMPLETE_ACTION":
+            print("✅ ユーザーが 完了 を選択")
+            // TODO: MeetingLog に完了ログを追加
+
+        case "SKIP_ACTION":
+            print("⏭️ ユーザーが スキップ を選択")
+            // TODO: MeetingLog にスキップログを追加
+
+        case "REMIND_LATER":
+            print("🔔 5分後に再通知")
+            scheduleReminder(afterSeconds: 300)
+
+        default:
+            break
+        }
+    }
+
+    private func scheduleReminder(afterSeconds: TimeInterval) {
+        let content = UNMutableNotificationContent()
+        content.title = "☕ 再度のお願い"
+        content.body = "お時間ができましたら、お立ち寄りください。"
+        content.sound = .default
+        content.categoryIdentifier = "EVENING_CATEGORY"
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: afterSeconds, repeats: false)
+        let request = UNNotificationRequest(identifier: "reminderNotification", content: content, trigger: trigger)
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Error scheduling reminder: \(error.localizedDescription)")
             }
         }
     }
