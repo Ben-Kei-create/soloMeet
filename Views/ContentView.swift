@@ -55,6 +55,16 @@ struct ContentView: View {
                 .tag(TabType.profile)
         }
         .accentColor(Color(#colorLiteral(red: 0.243, green: 0.157, blue: 0.137, alpha: 1)))
+        // Deep Link: 通知本文タップを受け取る
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenProgressDialog"))) { notification in
+            print("🔗 Deep Link 受信: ProgressDialog を開きます")
+            // ホームタブに切り替え
+            selectedTab = .home
+            // ダイアログを表示
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                showProgressDialog = true
+            }
+        }
     }
 
     private var homeView: some View {
