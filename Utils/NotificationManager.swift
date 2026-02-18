@@ -82,14 +82,23 @@ struct NotificationManager {
         // 店主のグリーティングメッセージを生成（簡易版：ストリークデータはサンドボックス環境では取得困難なため）
         let shopkeeperMessage = ShopkeeperEngine.generateGreeting(streak: 7, lastFailureReason: nil)
 
+        // 現在のストリークに応じた豆の焙煎度を取得（後でカスタマイズ可能）
+        let roastLevel = CoffeeRoast.current(streak: 7)
+
         morningContent.title = "☕ 朝のコーヒータイム"
         morningContent.body = shopkeeperMessage
         morningContent.sound = .default
         morningContent.badge = NSNumber(value: 1)
         morningContent.categoryIdentifier = "MORNING_CATEGORY"
 
-        // Deep link to app
-        morningContent.userInfo = ["action": "morning_greeting"]
+        // Deep link to app + Rich Notification情報
+        var userInfo: [AnyHashable: Any] = [
+            "action": "morning_greeting",
+            "streak": 7
+        ]
+        // 画像情報を追加（Notification Service Extension で使用）
+        userInfo.merge(roastLevel.notificationUserInfo) { _, new in new }
+        morningContent.userInfo = userInfo
 
         var dateComponents = DateComponents()
         dateComponents.hour = 7
@@ -111,13 +120,22 @@ struct NotificationManager {
         // 店主のイブニングメッセージを生成
         let shopkeeperMessage = ShopkeeperEngine.generateGreeting(streak: 7, lastFailureReason: nil)
 
+        // 現在のストリークに応じた豆の焙煎度を取得
+        let roastLevel = CoffeeRoast.current(streak: 7)
+
         eveningContent.title = "☕ 夜のおさらい時間"
         eveningContent.body = shopkeeperMessage
         eveningContent.sound = .default
         eveningContent.categoryIdentifier = "EVENING_CATEGORY"
 
-        // Deep link to app
-        eveningContent.userInfo = ["action": "evening_review"]
+        // Deep link to app + Rich Notification情報
+        var userInfo: [AnyHashable: Any] = [
+            "action": "evening_review",
+            "streak": 7
+        ]
+        // 画像情報を追加
+        userInfo.merge(roastLevel.notificationUserInfo) { _, new in new }
+        eveningContent.userInfo = userInfo
 
         var dateComponents = DateComponents()
         dateComponents.hour = 18

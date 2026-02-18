@@ -63,4 +63,42 @@ enum CoffeeRoast {
             return "✨"
         }
     }
+
+    /// Rich Notification 用のイメージ識別子
+    var imageIdentifier: String {
+        switch self {
+        case .green:
+            return "coffee_green"
+        case .medium:
+            return "coffee_medium"
+        case .dark:
+            return "coffee_dark"
+        case .italian:
+            return "coffee_italian"
+        }
+    }
+
+    /// Rich Notification 用のディープリンクデータ
+    var notificationUserInfo: [String: Any] {
+        return [
+            "roastType": self.name,
+            "imageIdentifier": self.imageIdentifier,
+            "emoji": self.emoji,
+            "colorHex": self.colorHex
+        ]
+    }
+
+    /// 16進数カラーコード（Notification Extension で使用）
+    var colorHex: String {
+        switch self {
+        case .green:
+            return "#9AB380"  // rgb(154, 179, 128)
+        case .medium:
+            return "#996633"  // rgb(153, 102, 51)
+        case .dark:
+            return "#664414"  // rgb(102, 68, 20)
+        case .italian:
+            return "#331800"  // rgb(51, 24, 0)
+        }
+    }
 }
